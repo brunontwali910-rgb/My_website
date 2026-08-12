@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QuoteFlow — Quotes with Authentication</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0f0f12;
+      --bg-card: #1a1a21;
+      --bg-input: #121218;
+      --text: #f0f0f5;
+      --text-muted: #9a9aab;
+      --primary: #7c5cfc;
+      --primary-hover: #6a4aef;
+      --accent: #c4b5fd;
+      --border: #2a2a35;
+      --error: #f87171;
+      --radius: 16px;
+      --shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      top: -20%; left: -10%;
+      width: 50%; height: 50%;
+      background: radial-gradient(circle, rgba(124, 92, 252, 0.15) 0%, transparent 70%);
+      pointer-events: none; z-index: 0;
+    }
+
+    body::after {
+      content: '';
+      position: fixed;
+      bottom: -20%; right: -10%;
+      width: 45%; height: 45%;
+      background: radial-gradient(circle, rgba(196, 181, 253, 0.1) 0%, transparent 70%);
+      pointer-events: none; z-index: 0;
+    }
+
+    /* Navbar */
+    .navbar {
+      position: fixed; top: 0; left: 0; right: 0;
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 1rem 2rem;
+      background: rgba(15, 15, 18, 0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      z-index: 100;
+    }
+
+    .nav-brand {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.5rem; font-weight: 700;
+      background: linear-gradient(135deg, #c4b5fd, #7c5cfc);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .nav-links { display: flex; align-items: center; gap: 0.75rem; }
+    .user-info { font-size: 0.9rem; color: var(--text-muted); margin-right: 0.5rem; }
+
+    /* Buttons */
+    .btn {
+      font-family: inherit; font-size: 0.95rem; font-weight: 500;
+      padding: 0.6rem 1.25rem; border-radius: 10px; border: none;
+      cursor: pointer; transition: all 0.2s ease;
+      display: inline-flex; align-items: center; justify-content: center;
+    }
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-primary:hover { background: var(--primary-hover); transform: translateY(-1px); }
+    .btn-outline { background: transparent; color: var(--text); border: 1px solid var(--border); }
+    .btn-outline:hover { border-color: var(--primary); color: var(--accent); }
+    .btn-ghost { background: transparent; color: var(--text-muted); }
+    .btn-ghost:hover { color: var(--text); }
+    .btn-lg { padding: 0.9rem 1.8rem; font-size: 1.05rem; }
+    .btn-full { width: 100%; padding: 0.85rem; }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none !important; }
+
+    /* Pages */
+    .page {
+      display: none; min-height: 100vh; padding-top: 80px;
+      position: relative; z-index: 1;
+    }
+    .page.active {
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+    }
+
+    /* Hero */
+    .hero { text-align: center; max-width: 720px; padding: 2rem; }
+    .hero h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(2.4rem, 6vw, 3.8rem); font-weight: 700; line-height: 1.2;
+      margin-bottom: 1.25rem;
+      background: linear-gradient(135deg, #fff 0%, #c4b5fd 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .hero-sub {
+      font-size: 1.15rem; color: var(--text-muted);
+      margin-bottom: 2.5rem; max-width: 520px;
+      margin-left: auto; margin-right: auto;
+    }
+    .hero-actions { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
+
+    /* Auth Cards */
+    .auth-card {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 2.5rem;
+      width: 100%; max-width: 420px; box-shadow: var(--shadow); margin: 2rem;
+    }
+    .auth-card h2 { font-family: 'Playfair Display', serif; font-size: 1.9rem; margin-bottom: 0.4rem; }
+    .auth-sub { color: var(--text-muted); margin-bottom: 1.8rem; font-size: 0.95rem; }
+
+    .form-group { margin-bottom: 1.2rem; }
+    .form-group label {
+      display: block; font-size: 0.85rem; font-weight: 500;
+      margin-bottom: 0.4rem; color: var(--text-muted);
+    }
+    .form-group input {
+      width: 100%; padding: 0.75rem 1rem;
+      background: var(--bg-input); border: 1px solid var(--border);
+      border-radius: 10px; color: var(--text); font-size: 1rem; font-family: inherit;
+      transition: border-color 0.2s;
+    }
+    .form-group input:focus { outline: none; border-color: var(--primary); }
+    .form-group input::placeholder { color: #555; }
+
+    .error-msg { color: var(--error); font-size: 0.9rem; margin-bottom: 1rem; min-height: 1.2em; }
+    .auth-switch { text-align: center; margin-top: 1.5rem; font-size: 0.9rem; color: var(--text-muted); }
+    .auth-switch a { color: var(--accent); text-decoration: none; font-weight: 500; }
+    .auth-switch a:hover { text-decoration: underline; }
+
+    /* Quotes */
+    .quotes-container {
+      width: 100%; max-width: 720px; padding: 2rem;
+      display: flex; flex-direction: column; align-items: center;
+    }
+    .quote-progress { width: 100%; margin-bottom: 2rem; text-align: center; }
+    #quoteCounter { font-size: 0.9rem; color: var(--text-muted); margin-bottom: 0.6rem; display: block; }
+    .progress-bar { height: 4px; background: var(--border); border-radius: 4px; overflow: hidden; }
+    .progress-fill {
+      height: 100%; background: linear-gradient(90deg, var(--primary), var(--accent));
+      border-radius: 4px; transition: width 0.4s ease; width: 6.66%;
+    }
+
+    .quote-card {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 3rem 2.5rem; width: 100%;
+      text-align: center; box-shadow: var(--shadow); position: relative;
+      min-height: 280px; display: flex; flex-direction: column; justify-content: center;
+      animation: fadeIn 0.4s ease;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .quote-mark {
+      font-family: 'Playfair Display', serif; font-size: 5rem; line-height: 0.6;
+      color: var(--primary); opacity: 0.4; position: absolute; top: 1.5rem; left: 2rem;
+    }
+    .quote-text {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(1.35rem, 3.5vw, 1.85rem); font-weight: 400;
+      line-height: 1.5; margin-bottom: 1.5rem; position: relative; z-index: 1;
+    }
+    .quote-author { font-size: 1rem; color: var(--accent); font-weight: 500; }
+
+    .quote-controls {
+      display: flex; gap: 1rem; margin-top: 2rem; width: 100%; justify-content: center;
+    }
+    .quote-controls .btn { min-width: 140px; }
+    .quote-nav-hint { margin-top: 1.5rem; font-size: 0.8rem; color: var(--text-muted); opacity: 0.7; }
+
+    .hidden { display: none !important; }
+
+    @media (max-width: 600px) {
+      .navbar { padding: 0.9rem 1.2rem; }
+      .auth-card { margin: 1rem; padding: 1.8rem 1.4rem; }
+      .quote-card { padding: 2.2rem 1.5rem; min-height: 240px; }
+      .quote-mark { font-size: 3.5rem; top: 1rem; left: 1.2rem; }
+      .hero-actions { flex-direction: column; align-items: center; }
+      .hero-actions .btn { width: 100%; max-width: 280px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Navbar -->
+  <nav class="navbar">
+    <div class="nav-brand">QuoteFlow</div>
+    <div class="nav-links">
+      <button class="btn btn-ghost" id="btnLogin" onclick="showPage('login')">Login</button>
+      <button class="btn btn-primary" id="btnRegister" onclick="showPage('register')">Sign Up</button>
+      <span class="user-info hidden" id="userInfo"></span>
+      <button class="btn btn-ghost hidden" id="btnLogout" onclick="logout()">Logout</button>
+    </div>
+  </nav>
+
+  <!-- Landing -->
+  <section id="page-landing" class="page active">
+    <div class="hero">
+      <h1>Discover Wisdom,<br>One Quote at a Time</h1>
+      <p class="hero-sub">A beautiful collection of timeless quotes. Sign in to start your journey from the first quote to the last.</p>
+      <div class="hero-actions">
+        <button class="btn btn-primary btn-lg" onclick="showPage('register')">Get Started Free</button>
+        <button class="btn btn-outline btn-lg" onclick="showPage('login')">I already have an account</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Login -->
+  <section id="page-login" class="page">
+    <div class="auth-card">
+      <h2>Welcome Back</h2>
+      <p class="auth-sub">Sign in to continue your quote journey</p>
+      <form onsubmit="handleLogin(event)">
+        <div class="form-group">
+          <label for="loginUsername">Username or Email</label>
+          <input type="text" id="loginUsername" required placeholder="Enter username or email">
+        </div>
+        <div class="form-group">
+          <label for="loginPassword">Password</label>
+          <input type="password" id="loginPassword" required placeholder="Enter your password">
+        </div>
+        <div id="loginError" class="error-msg"></div>
+        <button type="submit" class="btn btn-primary btn-full">Sign In</button>
+      </form>
+      <p class="auth-switch">Don't have an account? <a href="#" onclick="showPage('register'); return false;">Sign up</a></p>
+    </div>
+  </section>
+
+  <!-- Register -->
+  <section id="page-register" class="page">
+    <div class="auth-card">
+      <h2>Create Account</h2>
+      <p class="auth-sub">Join and explore inspiring quotes</p>
+      <form onsubmit="handleRegister(event)">
+        <div class="form-group">
+          <label for="regUsername">Username</label>
+          <input type="text" id="regUsername" required minlength="3" placeholder="Choose a username">
+        </div>
+        <div class="form-group">
+          <label for="regEmail">Email</label>
+          <input type="email" id="regEmail" required placeholder="you@example.com">
+        </div>
+        <div class="form-group">
+          <label for="regPassword">Password</label>
+          <input type="password" id="regPassword" required minlength="8" placeholder="At least 8 characters">
+        </div>
+        <div class="form-group">
+          <label for="regConfirm">Confirm Password</label>
+          <input type="password" id="regConfirm" required minlength="8" placeholder="Repeat password">
+        </div>
+        <div id="registerError" class="error-msg"></div>
+        <button type="submit" class="btn btn-primary btn-full">Create Account</button>
+      </form>
+      <p class="auth-switch">Already have an account? <a href="#" onclick="showPage('login'); return false;">Sign in</a></p>
+    </div>
+  </section>
+
+  <!-- Quotes (Protected) -->
+  <section id="page-quotes" class="page">
+    <div class="quotes-container">
+      <div class="quote-progress">
+        <span id="quoteCounter">Quote 1 of 15</span>
+        <div class="progress-bar">
+          <div class="progress-fill" id="progressFill"></div>
+        </div>
+      </div>
+
+      <div class="quote-card" id="quoteCard">
+        <div class="quote-mark">“</div>
+        <p class="quote-text" id="quoteText">Loading...</p>
+        <p class="quote-author" id="quoteAuthor">— Author</p>
+      </div>
+
+      <div class="quote-controls">
+        <button class="btn btn-outline" id="btnPrev" onclick="prevQuote()" disabled>← Previous</button>
+        <button class="btn btn-primary" id="btnNext" onclick="nextQuote()">Next →</button>
+      </div>
+
+      <div class="quote-nav-hint">
+        Use arrow keys ← → to navigate • Start from the beginning and go to the end
+      </div>
+    </div>
+  </section>
+
+  <script>
+    // ========== QUOTES DATA ==========
+    const quotes = [
+      { text: "The only way to do great work is to love what you do.", author: "Steve Jobs" },
+      { text: "Innovation distinguishes between a leader and a follower.", author: "Steve Jobs" },
+      { text: "Life is what happens when you're busy making other plans.", author: "John Lennon" },
+      { text: "The future belongs to those who believe in the beauty of their dreams.", author: "Eleanor Roosevelt" },
+      { text: "It is during our darkest moments that we must focus to see the light.", author: "Aristotle" },
+      { text: "Whoever is happy will make others happy too.", author: "Anne Frank" },
+      { text: "Do not go where the path may lead, go instead where there is no path and leave a trail.", author: "Ralph Waldo Emerson" },
+      { text: "You miss 100% of the shots you don't take.", author: "Wayne Gretzky" },
+      { text: "Whether you think you can or you think you can't, you're right.", author: "Henry Ford" },
+      { text: "The best time to plant a tree was 20 years ago. The second best time is now.", author: "Chinese Proverb" },
+      { text: "Your time is limited, so don't waste it living someone else's life.", author: "Steve Jobs" },
+      { text: "The journey of a thousand miles begins with one step.", author: "Lao Tzu" },
+      { text: "In the middle of every difficulty lies opportunity.", author: "Albert Einstein" },
+      { text: "Success is not final, failure is not fatal: it is the courage to continue that counts.", author: "Winston Churchill" },
+      { text: "Believe you can and you're halfway there.", author: "Theodore Roosevelt" }
+    ];
+
+    let currentIndex = 0;
+    let currentUser = null;
+
+    // ========== SIMPLE AUTH (localStorage) ==========
+    // Note: This is client-side only. For real strong auth use a server.
+
+    function getUsers() {
+      return JSON.parse(localStorage.getItem('quoteflow_users') || '[]');
+    }
+
+    function saveUsers(users) {
+      localStorage.setItem('quoteflow_users', JSON.stringify(users));
+    }
+
+    // Simple hash (not cryptographically strong, just for demo)
+    async function hashPassword(password) {
+      const encoder = new TextEncoder();
+      const data = encoder.encode(password + 'quoteflow_salt_2024');
+      const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+
+    function setSession(user) {
+      currentUser = user;
+      localStorage.setItem('quoteflow_session', JSON.stringify({
+        id: user.id,
+        username: user.username,
+        email: user.email
+      }));
+      updateUI();
+    }
+
+    function clearSession() {
+      currentUser = null;
+      localStorage.removeItem('quoteflow_session');
+      updateUI();
+    }
+
+    function loadSession() {
+      const session = localStorage.getItem('quoteflow_session');
+      if (session) {
+        currentUser = JSON.parse(session);
+        updateUI();
+        showPage('quotes');
+        showQuote(0);
+      }
+    }
+
+    // ========== UI HELPERS ==========
+    function showPage(page) {
+      document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+      document.getElementById('page-' + page).classList.add('active');
+
+      // Clear errors
+      document.getElementById('loginError').textContent = '';
+      document.getElementById('registerError').textContent = '';
+    }
+
+    function updateUI() {
+      const btnLogin = document.getElementById('btnLogin');
+      const btnRegister = document.getElementById('btnRegister');
+      const btnLogout = document.getElementById('btnLogout');
+      const userInfo = document.getElementById('userInfo');
+
+      if (currentUser) {
+        btnLogin.classList.add('hidden');
+        btnRegister.classList.add('hidden');
+        btnLogout.classList.remove('hidden');
+        userInfo.classList.remove('hidden');
+        userInfo.textContent = 'Hi, ' + currentUser.username;
+      } else {
+        btnLogin.classList.remove('hidden');
+        btnRegister.classList.remove('hidden');
+        btnLogout.classList.add('hidden');
+        userInfo.classList.add('hidden');
+      }
+    }
+
+    // ========== AUTH HANDLERS ==========
+    async function handleRegister(e) {
+      e.preventDefault();
+      const username = document.getElementById('regUsername').value.trim();
+      const email = document.getElementById('regEmail').value.trim().toLowerCase();
+      const password = document.getElementById('regPassword').value;
+      const confirm = document.getElementById('regConfirm').value;
+      const errorEl = document.getElementById('registerError');
+
+      if (password !== confirm) {
+        errorEl.textContent = 'Passwords do not match.';
+        return;
+      }
+      if (password.length < 8) {
+        errorEl.textContent = 'Password must be at least 8 characters.';
+        return;
+      }
+
+      const users = getUsers();
+      if (users.find(u => u.username.toLowerCase() === username.toLowerCase())) {
+        errorEl.textContent = 'Username already taken.';
+        return;
+      }
+      if (users.find(u => u.email === email)) {
+        errorEl.textContent = 'Email already registered.';
+        return;
+      }
+
+      const hashed = await hashPassword(password);
+      const newUser = {
+        id: Date.now().toString(),
+        username,
+        email,
+        password: hashed,
+        createdAt: new Date().toISOString()
+      };
+
+      users.push(newUser);
+      saveUsers(users);
+      setSession(newUser);
+      showPage('quotes');
+      showQuote(0);
+    }
+
+    async function handleLogin(e) {
+      e.preventDefault();
+      const username = document.getElementById('loginUsername').value.trim();
+      const password = document.getElementById('loginPassword').value;
+      const errorEl = document.getElementById('loginError');
+
+      const users = getUsers();
+      const user = users.find(u =>
+        u.username.toLowerCase() === username.toLowerCase() ||
+        u.email === username.toLowerCase()
+      );
+
+      if (!user) {
+        errorEl.textContent = 'Invalid username or password.';
+        return;
+      }
+
+      const hashed = await hashPassword(password);
+      if (hashed !== user.password) {
+        errorEl.textContent = 'Invalid username or password.';
+        return;
+      }
+
+      setSession(user);
+      showPage('quotes');
+      showQuote(0);
+    }
+
+    function logout() {
+      clearSession();
+      showPage('landing');
+      currentIndex = 0;
+    }
+
+    // ========== QUOTES LOGIC ==========
+    function showQuote(index) {
+      if (index < 0 || index >= quotes.length) return;
+      currentIndex = index;
+
+      const q = quotes[index];
+      const card = document.getElementById('quoteCard');
+
+      // Restart animation
+      card.style.animation = 'none';
+      card.offsetHeight; // trigger reflow
+      card.style.animation = 'fadeIn 0.4s ease';
+
+      document.getElementById('quoteText').textContent = q.text;
+      document.getElementById('quoteAuthor').textContent = '— ' + q.author;
+      document.getElementById('quoteCounter').textContent = `Quote ${index + 1} of ${quotes.length}`;
+      document.getElementById('progressFill').style.width = ((index + 1) / quotes.length * 100) + '%';
+
+      document.getElementById('btnPrev').disabled = index === 0;
+      document.getElementById('btnNext').disabled = index === quotes.length - 1;
+    }
+
+    function nextQuote() {
+      if (currentIndex < quotes.length - 1) showQuote(currentIndex + 1);
+    }
+
+    function prevQuote() {
+      if (currentIndex > 0) showQuote(currentIndex - 1);
+    }
+
+    // Keyboard navigation
+    document.addEventListener('keydown', (e) => {
+      if (!document.getElementById('page-quotes').classList.contains('active')) return;
+      if (e.key === 'ArrowRight') nextQuote();
+      if (e.key ===// ========== STATE ==========
+let currentUser = null;
+let currentIndex = 0;
+let quotes = [];
+const API = ''; // same origin
+
+// ========== HELPERS ==========
+function getToken() {
+  return localStorage.getItem('quoteflow_token');
+}
+
+function setToken(token) {
+  localStorage.setItem('quoteflow_token', token);
+}
+
+function clearToken() {
+  localStorage.removeItem('quoteflow_token');
+}
+
+async function api(url, options = {}) {
+  const headers = {
+    'Content-Type': 'application/json',
+    ...(options.headers || {})
+  };
+  const token = getToken();
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  const res = await fetch(API + url, { ...options, headers });
+  const data = await res.json().catch(() => ({}));
+
+  if (!res.ok) {
+    throw new Error(data.error || 'Something went wrong');
+  }
+  return data;
+}
+
+// ========== UI ==========
+function showPage(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  const el = document.getElementById('page-' + page);
+  if (el) el.classList.add('active');
+
+  // clear errors
+  const loginErr = document.getElementById('loginError');
+  const regErr = document.getElementById('registerError');
+  if (loginErr) loginErr.textContent = '';
+  if (regErr) regErr.textContent = '';
+}
+
+function updateNav() {
+  const btnLogin = document.getElementById('btnLogin');
+  const btnRegister = document.getElementById('btnRegister');
+  const btnLogout = document.getElementById('btnLogout');
+  const userInfo = document.getElementById('userInfo');
+
+  if (currentUser) {
+    btnLogin.classList.add('hidden');
+    btnRegister.classList.add('hidden');
+    btnLogout.classList.remove('hidden');
+    userInfo.classList.remove('hidden');
+    userInfo.textContent = 'Hi, ' + currentUser.username;
+  } else {
+    btnLogin.classList.remove('hidden');
+    btnRegister.classList.remove('hidden');
+    btnLogout.classList.add('hidden');
+    userInfo.classList.add('hidden');
+  }
+}
+
+// ========== AUTH ==========
+async function handleRegister(e) {
+  e.preventDefault();
+  const username = document.getElementById('regUsername').value.trim();
+  const email = document.getElementById('regEmail').value.trim();
+  const password = document.getElementById('regPassword').value;
+  const confirm = document.getElementById('regConfirm').value;
+  const errorEl = document.getElementById('registerError');
+
+  if (password !== confirm) {
+    errorEl.textContent = 'Passwords do not match.';
+    return;
+  }
+
+  try {
+    const data = await api('/api/register', {
+      method: 'POST',
+      body: JSON.stringify({ username, email, password })
+    });
+    setToken(data.token);
+    currentUser = data.user;
+    updateNav();
+    await loadQuotes();
+    showPage('quotes');
+    showQuote(0);
+  } catch (err) {
+    errorEl.textContent = err.message;
+  }
+}
+
+async function handleLogin(e) {
+  e.preventDefault();
+  const username = document.getElementById('loginUsername').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  const errorEl = document.getElementById('loginError');
+
+  try {
+    const data = await api('/api/login', {
+      method: 'POST',
+      body: JSON.stringify({ username, password })
+    });
+    setToken(data.token);
+    currentUser = data.user;
+    updateNav();
+    await loadQuotes();
+    showPage('quotes');
+    showQuote(0);
+  } catch (err) {
+    errorEl.textContent = err.message;
+  }
+}
+
+function logout() {
+  clearToken();
+  currentUser = null;
+  quotes = [];
+  currentIndex = 0;
+  updateNav();
+  showPage('landing');
+}
+
+// ========== QUOTES ==========
+async function loadQuotes() {
+  try {
+    quotes = await api('/api/quotes');
+  } catch (err) {
+    console.error(err);
+    // token maybe expired
+    logout();
+    alert('Session expired. Please login again.');
+  }
+}
+
+function showQuote(index) {
+  if (!quotes.length || index < 0 || index >= quotes.length) return;
+  currentIndex = index;
+
+  const q = quotes[index];
+  const card = document.getElementById('quoteCard');
+
+  // restart animation
+  card.style.animation = 'none';
+  card.offsetHeight;
+  card.style.animation = 'fadeIn 0.4s ease';
+
+  document.getElementById('quoteText').textContent = q.text;
+  document.getElementById('quoteAuthor').textContent = '— ' + q.author;
+  document.getElementById('quoteCounter').textContent = `Quote ${index + 1} of ${quotes.length}`;
+  document.getElementById('progressFill').style.width = ((index + 1) / quotes.length * 100) + '%';
+
+  document.getElementById('btnPrev').disabled = index === 0;
+  document.getElementById('btnNext').disabled = index === quotes.length - 1;
+}
+
+function nextQuote() {
+  if (currentIndex < quotes.length - 1) showQuote(currentIndex + 1);
+}
+
+function prevQuote() {
+  if (currentIndex > 0) showQuote(currentIndex - 1);
+}
+
+// Keyboard
+document.addEventListener('keydown', (e) => {
+  if (!document.getElementById('page-quotes').classList.contains('active')) return;
+  if (e.key === 'ArrowRight') nextQuote();
+  if (e.key === 'ArrowLeft') prevQuote();
+});
+
+// ========== INIT ==========
+async function init() {
+  const token = getToken();
+  if (!token) {
+    updateNav();
+    return;
+  }
+
+  try {
+    currentUser = await api('/api/me');
+    updateNav();
+    await loadQuotes();
+    showPage('quotes');
+    showQuote(0);
+  } catch (err) {
+    // invalid token
+    clearToken();
+    updateNav();
+  }
+}
+
+init();
+cd /home/workdir/artifacts/quotes-auth-app && npm installcd /home/workdir/artifacts/quotes-auth-app && npm install --prefer-offline --no-audit --no-fundcd /home/workdir/artifacts/quotes-auth-app && ls -la && npm --version && node --versioncd /home/workdir/artifacts/quotes-auth-app && ls node_modules | head -20 && ls node_modules/express 2>/dev/null || echo "express missing" && ls node_modules/bcryptjs 2>/dev/null || echo "bcryptjs missing" && ls node_modules/jsonwebtoken 2>/dev/null || echo "jsonwebtoken missing"cd /home/workdir/artifacts/quotes-auth-app && ls node_modules | grep -E 'express|bcrypt|jsonwebtoken|cors' && cat package.jsoncd /home/workdir/artifacts/quotes-auth-app && node server.jssleep 1 && cat /tmp/grok-bg-7168cffc-f363-489e-b09c-ab8b2470aafd.log && curl -s http://localhost:3000/api/quotes | head -c 200 || echo "Not ready or needs auth"ps aux | grep node | grep -v grep; cat /tmp/grok-bg-7168cffc-f363-489e-b09c-ab8b2470aafd.log; ls -la /home/workdir/artifacts/quotes-auth-app/data/
